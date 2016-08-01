@@ -4,16 +4,21 @@ Created on Fri Jul 08 22:50:00 2016
 
 @author: Cedric Oeldorf
 """
+""" SET VARIABLES """
+
+# For GRU, set this to 0, for LSTM set this to 1
+architecture = 0
+# set path to corpus
+path = "C:/Users/Cedric Oeldorf/Desktop/University/Research/Data/Gutenberg/kafka.txt"
 from __future__ import print_function
-
 MAX_CHARACTERS_FROM_TEXT = 360000
-
 SYMBOLS = '{}()[].,:;+-*/&|<>=~$'
 ENCODING = 'UTF-8-SIG'
 MAX_VOCABULARY_SIZE = 15000
 HIDDEN_SIZE = 512
 MAX_SEQ_LEN = 50 # sentences with more tokens than MAX_SEQ_LEN are filtered
 BATCH_SIZE = 52
+
 
 from keras.models import Sequential
 from keras.layers import Embedding
@@ -79,7 +84,7 @@ def convert_sequences(sequences, max_nb_words=None,
 
 
 # 1. Import text and tokenize into sentences
-path = "C:/Users/Cedric Oeldorf/Desktop/University/Research/Data/Gutenberg/kafka.txt"
+
 with codecs.open(path, 'r', ENCODING) as f:
     if MAX_CHARACTERS_FROM_TEXT:
         text = f.read()[:MAX_CHARACTERS_FROM_TEXT].lower()
@@ -100,26 +105,30 @@ print('Converting data...')
 X, y, word_indices, indices_word = convert_sequences(tokens, max_nb_words=MAX_VOCABULARY_SIZE, maxlen=MAX_SEQ_LEN)
 vocab_size = len(word_indices)
 print('Got %d sequences' % len(X))
-"""
-print('Build model...')
-model = Sequential()
-model.add(Embedding(vocab_size, HIDDEN_SIZE, input_length=MAX_SEQ_LEN, mask_zero=True))
-model.add(GRU(HIDDEN_SIZE/2,return_sequences=True))
-model.add(Dropout(0.2))
-model.add(GRU(HIDDEN_SIZE/2,return_sequences=False))
-model.add(Dropout(0.2))
-model.add(Dense(vocab_size, activation='softmax'))
 
-model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
-"""
-print('Build model...')
-model = Sequential()
-model.add(Embedding(vocab_size, HIDDEN_SIZE, input_length=MAX_SEQ_LEN, mask_zero=True))
-model.add(LSTM(HIDDEN_SIZE))
-model.add(Dropout(0.2))
-model.add(Dense(vocab_size, activation='softmax'))
 
-model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+if architecture == 0:
+    print('Build model...')
+    model = Sequential()
+    model.add(Embedding(vocab_size, HIDDEN_SIZE, input_length=MAX_SEQ_LEN, mask_zero=True))
+    model.add(GRU(HIDDEN_SIZE/2,return_sequences=True))
+    model.add(Dropout(0.2))
+    model.add(GRU(HIDDEN_SIZE/2,return_sequences=False))
+    model.add(Dropout(0.2))
+    model.add(Dense(vocab_size, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+else:
+    print('Build model...')
+    model = Sequential()
+    model.add(Embedding(vocab_size, HIDDEN_SIZE, input_length=MAX_SEQ_LEN, mask_zero=True))
+    model.add(LSTM(HIDDEN_SIZE/2,return_sequences=True))
+    model.add(Dropout(0.2))
+    model.add(LSTM(HIDDEN_SIZE/2,return_sequences=False))
+    model.add(Dropout(0.2))
+    model.add(Dense(vocab_size, activation='softmax'))
+    model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
+
+#model.load_weights('C:/Users/Cedric Oeldorf/Desktop/University/Research/Code/MODELS/GRU_final_final_final.h5')
 
 def sample(a, temperature=1.0):
     # helper function to sample an index from a probability array
@@ -128,7 +137,6 @@ def sample(a, temperature=1.0):
     return np.random.choice(len(a), p=a)
     #return np.argmax(np.random.multinomial(1, a, 1))
 
-model.load_weights('C:/Users/Cedric Oeldorf/Desktop/University/Research/Code/MODELS/GRU_final_final_final.h5')
 
 # train the model, output generated text after each iteration
 from keras.callbacks import History
@@ -163,107 +171,3 @@ for iteration in range(1, 50):
             if next_word == "<END>":
                 break
     print()
-
-def save_loss(filename):
-    list0 = []    
-    list0 = [f['loss'] for f in h]  
-    list2 = []
-    list2 = [l[0] for l in list0]   
-    list0 = []    
-    list0 = [f['val_loss'] for f in h]  
-    list3 = []
-    list3 = [l[0] for l in list0]   
-    import csv
-
-    with open("C://Users//Cedric Oeldorf//Desktop//University//Research//RESULTS//GRU//300k//loss_model2.csv", 'wb') as myfile:
-        wr = csv.writer(myfile)
-        wr.writerow(list2)
-    with open("C://Users//Cedric Oeldorf//Desktop//University//Research//RESULTS//GRU//300k//loss_val_model2.csv", 'wb') as myfile:
-        wr = csv.writer(myfile)
-        wr.writerow(list3)
-save_loss("C://Users//Cedric Oeldorf//Desktop//University//sResearch//RESULTS//GRU//300k//loss_withval_512bigbatch.csv")
-
-
-path_loss = "C://Users//Cedric Oeldorf//Desktop//University//Research//RESULTS//LSTM//300k//L1.csv"
-path_val_loss = "C://Users//Cedric Oeldorf//Desktop//University//Research//RESULTS//LSTM//300k//L1_val.csv"
-def load_loss(path_lstm_loss, path_gru_loss):
-    import pandas as pd
-    loss = pd.DataFrame()
-    import csv
-    with open(path_loss, 'rb') as f:
-        reader = csv.reader(f)
-        your_list = list(reader)
-        
-    lstm = [item for sublist in your_list for item in sublist]        
-    loss["loss"] = lstm
-    with open(path_val_loss, 'rb') as f:
-        reader = csv.reader(f)
-        your_list = list(reader)
-    val = [item for sublist in your_list for item in sublist]
-    
-    loss["val"] = val
-
-load_loss(path_loss,path_val_loss)
-
-
-model.save_weights('C:/Users/Cedric Oeldorf/Desktop/University/Research/Code/MODELS/GRU_19June.h5')
-from keras.utils.visualize_util import plot
-plot(model, to_file='C:/Users/Cedric Oeldorf/Desktop/University/Research/Results/LSTM/kafka/LSTMmodel1.png')
-
-#************************************************************************************
-
-# PLOTTING
-
-#************************************************************************************
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-fig, ax = plt.subplots(1, 1, figsize=(12, 14))
-
-ax.spines['top'].set_visible(False)
-ax.spines['bottom'].set_visible(False)
-ax.spines['right'].set_visible(False)
-ax.spines['left'].set_visible(False)
-ax.get_xaxis().tick_bottom()
-ax.get_yaxis().tick_left()
-k = len(loss)
-#range for whole, np arrange for decimal
-plt.xticks(range(0, k, 2), fontsize=14)
-plt.yticks(np.arange(0, 7, 0.2))
-
-for y in np.arange(0, 7, 0.2):
-    plt.plot(range(0,k), [y] * len(range(0,k)), '--',
-             lw=0.5, color='black', alpha=0.3)
-plt.tick_params(axis='both', which='both', bottom='on', top='off',
-                labelbottom='on', left='off', right='off', labelleft='on')
-
-plt.plot(loss['loss'],color='b',linewidth=2)
-plt.axvline(x=12,color='g',ls='dashed',linewidth=2)
-
-plt.plot(loss['val'],color='r',linewidth=2)
-#plt.text(1, 0.8, 'LSTM', fontsize=14, color='b')
-#plt.text(1, 0.8, 'GRU', fontsize=14, color='b')
-
-import matplotlib.patches as mpatches
-
-blue_patch = mpatches.Patch(color='b', label='Training Loss')
-red_patch = mpatches.Patch(color='r', label='Validation Loss')
-plt.legend(bbox_to_anchor=(1, 1),handles=[blue_patch,red_patch])
-#plt.title("Minimization of cross entropy loss (GRU model 2)")
-#plt.xlabel("Iteration")
-#plt.ylabel("Cross entropy loss")
-ax.set_title("Minimization of cross entropy loss (LSTM model 1)",fontsize=20)
-ax.set_xlabel("Iteration",fontsize=20)
-ax.set_ylabel("Cross entropy loss",fontsize=20)
-#**************************************************************************
-
-#Calculate perplexity
-
-#**************************************************************************
-loss = loss.convert_objects(convert_numeric=True)
-
-loss["perp_lstm"] = 2**(loss["val"])
-loss["perp_gru"] = 2**(loss["gru"])
-
-    
